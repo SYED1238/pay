@@ -12,7 +12,15 @@ export enum PaymentStatus {
   PAYMENT_EXPIRED = 'PAYMENT_EXPIRED',
 }
 
-export type PaymentRail = 'upi' | 'paypal' | 'usdt';
+export type PaymentRail = 'upi' | 'bank' | 'paypal' | 'usdt';
+
+export interface BankTransferConfig {
+  accountHolderName: string;
+  accountNumber: string;
+  ifsc: string;
+  bankName: string;
+  branch: string;
+}
 
 export type UPIApp = 'googlepay' | 'phonepe' | 'paytm' | 'bhim' | 'generic';
 

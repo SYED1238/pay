@@ -61,6 +61,16 @@ export const UPI_APPS: Record<UPIApp, UPIAppConfig> = {
   },
 };
 
+// ─── Direct Bank Transfer Configuration ────────────────────────
+export const BANK_TRANSFER_CONFIG = {
+  accountHolderName: 'SYED MOHAMMED HAMZA',
+  accountNumber: '77780102114274',
+  ifsc: 'FDRL0007778',
+  bankName: 'Federal Bank',
+  branch: 'Neo Banking / Jupiter',
+  quickAmounts: [100, 200, 500, 1000, 2000, 5000],
+} as const;
+
 // ─── PayPal Configuration ─────────────────────────────────────
 export const PAYPAL_CONFIG = {
   username: 'SYEDHAMZA1238',
@@ -93,5 +103,5 @@ export const BRAND = {
   name: 'SYED HAMZA',
   domain: 'pay.syedhamza.in',
   title: 'Pay Syed Hamza — Unified Payment Terminal',
-  description: 'Make a secure payment to Syed Hamza via UPI, PayPal, or USDT.',
+  description: 'Make a secure payment to Syed Hamza via UPI, Direct Bank Transfer, PayPal, or USDT.',
 } as const;

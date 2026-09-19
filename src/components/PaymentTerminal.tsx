@@ -16,6 +16,7 @@ import UPIAppButton from './UPIAppButton';
 import QRDisplay from './QRDisplay';
 import CopyUPIId from './CopyUPIId';
 import PaymentStatusDisplay from './PaymentStatusDisplay';
+import BankTransferTerminal from './BankTransferTerminal';
 import PayPalTerminal from './PayPalTerminal';
 import USDTTerminal from './USDTTerminal';
 
@@ -27,7 +28,8 @@ interface PaymentTerminalProps {
 }
 
 const PAYMENT_RAILS: { id: PaymentRail; label: string; tag: string; badge: string }[] = [
-  { id: 'upi', label: 'UPI', tag: 'India', badge: '🇮🇳' },
+  { id: 'upi', label: 'UPI', tag: 'Instant', badge: '🇮🇳' },
+  { id: 'bank', label: 'Bank', tag: 'Direct', badge: '🏛️' },
   { id: 'paypal', label: 'PayPal', tag: 'Global', badge: '🌎' },
   { id: 'usdt', label: 'USDT', tag: 'TRC20', badge: '₮' },
 ];
@@ -215,7 +217,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
 
           {/* Segmented Payment Rails Selector */}
           <div
-            className="mt-4 grid grid-cols-3 gap-1 p-1 rounded-xl"
+            className="mt-4 grid grid-cols-4 gap-1 p-1 rounded-xl"
             style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
             role="tablist"
             aria-label="Payment rails"
@@ -229,7 +231,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                   onClick={() => setActiveRail(rail.id)}
                   role="tab"
                   aria-selected={isActive}
-                  className="relative py-2 px-2 rounded-lg flex flex-col items-center justify-center transition-colors text-center cursor-pointer select-none"
+                  className="relative py-2 px-1 rounded-lg flex flex-col items-center justify-center transition-colors text-center cursor-pointer select-none"
                   style={{
                     color: isActive ? 'var(--text-primary)' : 'var(--text-tertiary)',
                   }}
@@ -246,11 +248,11 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                       transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                     />
                   )}
-                  <span className="relative z-10 text-xs font-semibold tracking-wide flex items-center gap-1.5">
-                    <span className="text-[11px]">{rail.badge}</span>
+                  <span className="relative z-10 text-[11px] font-semibold tracking-tight flex items-center justify-center gap-1">
+                    <span className="text-[10px]">{rail.badge}</span>
                     <span>{rail.label}</span>
                   </span>
-                  <span className="relative z-10 text-[9px] uppercase tracking-wider font-medium opacity-70 mt-0.5">
+                  <span className="relative z-10 text-[8px] uppercase tracking-wider font-medium opacity-70 mt-0.5">
                     {rail.tag}
                   </span>
                 </button>
@@ -340,6 +342,19 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                           'Enter an amount'
                         )}
                       </motion.button>
+
+                      {/* Direct Bank Transfer Shortcut */}
+                      <div className="text-center pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setActiveRail('bank')}
+                          className="text-xs transition-colors hover:underline inline-flex items-center gap-1.5 cursor-pointer"
+                          style={{ color: 'var(--text-tertiary)' }}
+                        >
+                          <span>🏛️ Or transfer directly via</span>
+                          <span style={{ color: 'var(--accent-champagne)', fontWeight: 500 }}>Bank Account (IMPS / NEFT) →</span>
+                        </button>
+                      </div>
                     </motion.div>
                   )}
 
@@ -436,6 +451,66 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                           {/* UPI ID Copy */}
                           <CopyUPIId />
 
+                          {/* ── Direct Bank Transfer Payment Card ── */}
+                          <div
+                            className="p-4 rounded-2xl transition-all relative overflow-hidden"
+                            style={{
+                              backgroundColor: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                  style={{
+                                    backgroundColor: 'var(--bg-surface)',
+                                    border: '1px solid var(--border-subtle)',
+                                  }}
+                                >
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-champagne)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 2L2 7h20L12 2z"/>
+                                  </svg>
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <h3 className="text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                                      Direct Bank Transfer
+                                    </h3>
+                                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(201, 169, 110, 0.15)', color: 'var(--accent-champagne)' }}>
+                                      IMPS / NEFT
+                                    </span>
+                                  </div>
+                                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                                    Transfer directly to our bank account
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3.5 pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                                Account No + IFSC transfer
+                              </span>
+                              <motion.button
+                                type="button"
+                                onClick={() => setActiveRail('bank')}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0"
+                                style={{
+                                  backgroundColor: 'var(--accent-champagne)',
+                                  color: 'var(--text-inverse)',
+                                }}
+                              >
+                                <span>Pay via Bank Transfer</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </motion.button>
+                            </div>
+                          </div>
+
                           {/* Mobile Fallback: Having trouble? Show QR Code */}
                           <div className="pt-2 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
                             <div className="text-center">
@@ -501,6 +576,66 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                           )}
 
                           <CopyUPIId />
+
+                          {/* ── Direct Bank Transfer Payment Card ── */}
+                          <div
+                            className="p-4 rounded-2xl transition-all relative overflow-hidden"
+                            style={{
+                              backgroundColor: 'var(--bg-elevated)',
+                              border: '1px solid var(--border-subtle)',
+                            }}
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                  style={{
+                                    backgroundColor: 'var(--bg-surface)',
+                                    border: '1px solid var(--border-subtle)',
+                                  }}
+                                >
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-champagne)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 2L2 7h20L12 2z"/>
+                                  </svg>
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-1.5">
+                                    <h3 className="text-sm font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                                      Direct Bank Transfer
+                                    </h3>
+                                    <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded-md" style={{ backgroundColor: 'rgba(201, 169, 110, 0.15)', color: 'var(--accent-champagne)' }}>
+                                      IMPS / NEFT
+                                    </span>
+                                  </div>
+                                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                                    Transfer directly to our bank account
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mt-3.5 pt-3 border-t flex items-center justify-between gap-2" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span className="text-[11px] truncate" style={{ color: 'var(--text-secondary)' }}>
+                                Account No + IFSC transfer
+                              </span>
+                              <motion.button
+                                type="button"
+                                onClick={() => setActiveRail('bank')}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0"
+                                style={{
+                                  backgroundColor: 'var(--accent-champagne)',
+                                  color: 'var(--text-inverse)',
+                                }}
+                              >
+                                <span>Pay via Bank Transfer</span>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+                                </svg>
+                              </motion.button>
+                            </div>
+                          </div>
                         </div>
                       )}
 
@@ -592,7 +727,25 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
             )}
 
             {/* ══════════════════════════════════════════════════════
-                2. PAYPAL PAYMENT RAIL
+                2. DIRECT BANK TRANSFER RAIL
+               ══════════════════════════════════════════════════════ */}
+            {activeRail === 'bank' && (
+              <motion.div
+                key="rail-bank"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+              >
+                <BankTransferTerminal
+                  initialAmount={validAmount}
+                  onBack={() => setActiveRail('upi')}
+                />
+              </motion.div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════
+                3. PAYPAL PAYMENT RAIL
                ══════════════════════════════════════════════════════ */}
             {activeRail === 'paypal' && (
               <motion.div
@@ -607,7 +760,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
             )}
 
             {/* ══════════════════════════════════════════════════════
-                3. USDT CRYPTO PAYMENT RAIL
+                4. USDT CRYPTO PAYMENT RAIL
                ══════════════════════════════════════════════════════ */}
             {activeRail === 'usdt' && (
               <motion.div
@@ -637,6 +790,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
           </svg>
           <span className="text-[10px] tracking-wider uppercase" style={{ color: 'var(--text-tertiary)' }}>
             {activeRail === 'upi' && 'Processed through UPI ecosystem'}
+            {activeRail === 'bank' && 'Processed via Direct Bank Transfer (IMPS / NEFT)'}
             {activeRail === 'paypal' && 'Processed via PayPal Official Checkout'}
             {activeRail === 'usdt' && 'Settled on TRON (TRC20) Network'}
           </span>

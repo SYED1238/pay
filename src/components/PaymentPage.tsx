@@ -71,7 +71,7 @@ export default function PaymentPage() {
             className="mt-8 text-center"
           >
             <p className="text-[10px] tracking-wider uppercase" style={{ color: 'var(--text-tertiary)' }}>
-              {PAYMENT_CONFIG.payee.name} · UPI · PayPal · USDT
+              {PAYMENT_CONFIG.payee.name} · UPI · Bank Transfer · PayPal · USDT
             </p>
           </motion.footer>
         </div>
@@ -106,14 +106,20 @@ export default function PaymentPage() {
                 Simple payment options for wherever you are.
               </p>
 
-              {/* 3 Payment Rails Feature List */}
-              <div className="mt-10 space-y-4">
+              {/* 4 Payment Rails Feature List */}
+              <div className="mt-10 space-y-3.5">
                 {[
                   {
                     route: 'India',
                     label: 'UPI Payments',
                     desc: 'Instant transfers via Google Pay, PhonePe, Paytm, or BHIM',
                     badge: '🇮🇳',
+                  },
+                  {
+                    route: 'Bank',
+                    label: 'Direct Bank Transfer',
+                    desc: 'Direct account transfer with Account Number & IFSC (IMPS / NEFT)',
+                    badge: '🏛️',
                   },
                   {
                     route: 'International',
