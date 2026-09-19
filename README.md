@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pay Syed Hamza — Secure UPI Payment Experience
+
+A luxury fintech UPI payment experience built with Next.js 16, React 19, TypeScript, Tailwind CSS, and Framer Motion for [pay.syedhamza.in](https://pay.syedhamza.in).
+
+## Features
+
+- **Device-Aware Flow**:
+  - **Mobile (Android & iOS)**: UPI App-First flow. Launches native UPI intents with direct app selection for Google Pay, PhonePe, Paytm, BHIM, and other UPI apps, with dynamic QR code fallback.
+  - **Desktop**: QR-First flow. Displays a high-contrast dynamic QR code immediately for instant scanning with any UPI app.
+- **Dynamic Amount Encoding**: Real-time generation of NPCI compliant UPI URIs and dynamic QR codes with transaction references.
+- **Truthful Payment States**: Transparent status tracking with active status verification and no false payment confirmation claims.
+- **Fintech Luxury Aesthetics**: Cinematic dark mode with champagne gold accents, glassmorphic surfaces, and micro-interactions.
+
+## Tech Stack
+
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS
+- **Animations**: Framer Motion
+- **QR Code**: qrcode
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+# Install dependencies
+npm install
+
+# Start development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+
+# Build for production
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3002](http://localhost:3002) in your browser.
