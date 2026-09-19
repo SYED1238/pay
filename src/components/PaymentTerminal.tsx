@@ -44,6 +44,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showMobileQR, setShowMobileQR] = useState(false);
+  const [hasReturnedFromApp, setHasReturnedFromApp] = useState(false);
   const [device, setDevice] = useState<DeviceInfo>(() => deviceOverride || detectDevice());
 
   useEffect(() => {
@@ -56,6 +57,41 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
       return () => window.removeEventListener('resize', handleResize);
     }
   }, [deviceOverride]);
+
+  // Listen for user returning to browser from UPI app
+  useEffect(() => {
+    if (step !== 'processing') return;
+
+    let wasHidden = false;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        wasHidden = true;
+      } else if (document.visibilityState === 'visible' && wasHidden) {
+        setHasReturnedFromApp(true);
+      }
+    };
+
+    const handleBlur = () => {
+      wasHidden = true;
+    };
+
+    const handleFocus = () => {
+      if (wasHidden) {
+        setHasReturnedFromApp(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [step]);
 
   // If initialAmount is provided and valid, auto-advance
   useEffect(() => {
@@ -101,16 +137,17 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
 
   const handleLaunchUri = useCallback((uri: string) => {
     setPaymentStatus(PaymentStatus.PAYMENT_APP_OPENING);
+    setHasReturnedFromApp(false);
 
     try {
-      // Attempt to launch the UPI app
+      // Attempt to launch the standard UPI intent directly
       window.location.href = uri;
 
       // Transition to pending state after delay — NEVER claim instant success
       setTimeout(() => {
         setPaymentStatus(PaymentStatus.PAYMENT_PENDING);
         setStep('processing');
-      }, 1600);
+      }, 1200);
     } catch {
       setPaymentStatus(PaymentStatus.PAYMENT_FAILED);
       setStep('processing');
@@ -118,19 +155,19 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
   }, []);
 
   const handleLaunchPrimaryUPI = useCallback(() => {
-    if (!transaction || !validAmount) return;
+    if (!validAmount) return;
     const uri = generateUPIUri({
       amount: validAmount,
-      referenceId: transaction.referenceId,
+      referenceId: transaction?.referenceId,
     });
     handleLaunchUri(uri);
   }, [transaction, validAmount, handleLaunchUri]);
 
   const handleAppSelect = useCallback((app: UPIApp) => {
-    if (!transaction || !validAmount) return;
+    if (!validAmount) return;
     const uri = generateAppSpecificUPIUri(
       app,
-      { amount: validAmount, referenceId: transaction.referenceId },
+      { amount: validAmount, referenceId: transaction?.referenceId },
       device
     );
     handleLaunchUri(uri);
@@ -153,6 +190,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
 
   const handleRetry = useCallback(() => {
     setPaymentStatus(PaymentStatus.IDLE);
+    setHasReturnedFromApp(false);
     setStep('method');
   }, []);
 
@@ -162,15 +200,28 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
     setTransaction(null);
     setUpiUri('');
     setShowMobileQR(false);
+    setHasReturnedFromApp(false);
     setStep('amount');
     setError(null);
   }, []);
 
   const handleGoToMethod = useCallback(() => {
-    if (isValid) {
+    if (isValid && validAmount) {
+      const uri = generateUPIUri({ amount: validAmount });
+      setUpiUri(uri);
+
+      if (device.isMobile) {
+        // Mobile flow per Requirement 3 & 13: tap Pay with UPI -> launch intent directly
+        handleLaunchUri(uri);
+      } else {
+        // Desktop flow per Requirement 5 & 13: tap Pay with UPI -> display QR code
+        setStep('method');
+      }
+
+      // Record transaction asynchronously in background
       createPayment();
     }
-  }, [isValid, createPayment]);
+  }, [isValid, validAmount, device.isMobile, handleLaunchUri, createPayment]);
 
   return (
     <motion.div
@@ -337,7 +388,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                             <span>Generating payment…</span>
                           </div>
                         ) : isValid && validAmount ? (
-                          `Continue to pay ${formatAmount(validAmount)}`
+                          `Pay ${formatAmount(validAmount)} with UPI`
                         ) : (
                           'Enter an amount'
                         )}
@@ -636,6 +687,30 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                               </motion.button>
                             </div>
                           </div>
+
+                          {/* Desktop: Check payment status button */}
+                          <div className="pt-2">
+                            <motion.button
+                              type="button"
+                              onClick={() => {
+                                setPaymentStatus(PaymentStatus.PAYMENT_PENDING);
+                                setStep('processing');
+                              }}
+                              whileHover={{ scale: 1.015 }}
+                              whileTap={{ scale: 0.985 }}
+                              className="w-full py-3 px-4 rounded-xl text-xs font-medium transition-all mb-2 flex items-center justify-center gap-2"
+                              style={{
+                                backgroundColor: 'var(--bg-elevated)',
+                                color: 'var(--text-secondary)',
+                                border: '1px solid var(--border-subtle)',
+                              }}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                              </svg>
+                              <span>I&apos;ve completed the payment / Check status</span>
+                            </motion.button>
+                          </div>
                         </div>
                       )}
 
@@ -663,63 +738,21 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                       exit={{ opacity: 0, x: 16 }}
                       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                     >
-                      {!device.isMobile && paymentStatus === PaymentStatus.PAYMENT_PENDING && upiUri ? (
-                        <div className="space-y-5">
-                          <div className="text-center">
-                            <p className="text-xs uppercase tracking-wider font-medium mb-1" style={{ color: 'var(--accent-champagne)' }}>
-                              Scan with any UPI app
-                            </p>
-                            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                              Awaiting payment confirmation
-                            </p>
-                          </div>
-
-                          <QRDisplay upiUri={upiUri} amount={validAmount ? validAmount.toString() : ''} />
-                          <CopyUPIId />
-
-                          <div className="pt-2 text-center">
-                            <motion.button
-                              onClick={handleCheckStatus}
-                              whileHover={{ scale: 1.015 }}
-                              whileTap={{ scale: 0.985 }}
-                              className="w-full py-3 px-4 rounded-xl text-sm font-medium transition-all mb-3 flex items-center justify-center gap-2"
-                              style={{
-                                backgroundColor: 'var(--bg-elevated)',
-                                color: 'var(--text-primary)',
-                                border: '1px solid var(--border-subtle)',
-                              }}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                              </svg>
-                              <span>Check payment status</span>
-                            </motion.button>
-
-                            <motion.button
-                              onClick={handleBack}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              className="text-sm py-2 px-4 rounded-lg transition-colors"
-                              style={{ color: 'var(--text-tertiary)' }}
-                            >
-                              ← Start over
-                            </motion.button>
-                          </div>
-                        </div>
-                      ) : (
-                        <PaymentStatusDisplay
-                          status={paymentStatus}
-                          amount={validAmount || 0}
-                          referenceId={transaction?.referenceId}
-                          onRetry={handleRetry}
-                          onBack={handleBack}
-                          onShowQR={() => {
-                            setShowMobileQR(true);
-                            setStep('method');
-                          }}
-                          onCheckStatus={handleCheckStatus}
-                        />
-                      )}
+                      <PaymentStatusDisplay
+                        status={paymentStatus}
+                        amount={validAmount || 0}
+                        referenceId={transaction?.referenceId}
+                        hasReturned={hasReturnedFromApp}
+                        onRetry={handleRetry}
+                        onBack={handleBack}
+                        onShowQR={() => {
+                          setShowMobileQR(true);
+                          setStep('method');
+                        }}
+                        onCheckStatus={handleCheckStatus}
+                        onSelectApp={handleAppSelect}
+                        onSwitchToBank={() => setActiveRail('bank')}
+                      />
                     </motion.div>
                   )}
                 </AnimatePresence>

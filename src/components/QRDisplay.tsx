@@ -18,10 +18,10 @@ export default function QRDisplay({ upiUri, amount }: QRDisplayProps) {
 
     QRCode.toDataURL(upiUri, {
       width: 280,
-      margin: 3,
+      margin: 2,
       color: {
-        dark: '#F5F5F5',
-        light: '#111111',
+        dark: '#000000',
+        light: '#FFFFFF',
       },
       errorCorrectionLevel: 'M',
     })
@@ -48,35 +48,35 @@ export default function QRDisplay({ upiUri, amount }: QRDisplayProps) {
   }
 
   return (
-    <div className="flex flex-col items-center gap-5">
-      <p className="text-sm font-medium tracking-wide uppercase" style={{ color: 'var(--text-secondary)' }}>
+    <div className="flex flex-col items-center gap-4">
+      <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--accent-champagne)' }}>
         Scan with any UPI app
       </p>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
+        initial={{ opacity: 0, scale: 0.92 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="relative p-4 rounded-2xl"
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="relative p-3.5 rounded-2xl mx-auto flex items-center justify-center shadow-lg"
         style={{
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-subtle)',
+          backgroundColor: '#FFFFFF',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
         }}
       >
         {qrDataUrl ? (
           <img
             src={qrDataUrl}
             alt={`QR code for UPI payment of ₹${amount}`}
-            width={280}
-            height={280}
-            className="rounded-xl"
+            width={240}
+            height={240}
+            className="rounded-lg block"
             style={{ imageRendering: 'pixelated' }}
           />
         ) : (
-          <div className="w-[280px] h-[280px] flex items-center justify-center">
+          <div className="w-[240px] h-[240px] flex items-center justify-center">
             <motion.div
               className="w-6 h-6 rounded-full border-2"
-              style={{ borderColor: 'var(--accent-champagne)', borderTopColor: 'transparent' }}
+              style={{ borderColor: '#000000', borderTopColor: 'transparent' }}
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             />

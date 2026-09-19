@@ -153,7 +153,7 @@ export default function AmountInput({ value, onChange, onSubmit, disabled }: Amo
               style={{ color: 'var(--error)' }}
               role="alert"
             >
-              Enter a valid amount (₹{PAYMENT_CONFIG.amount.min} – ₹{PAYMENT_CONFIG.amount.max.toLocaleString('en-IN')})
+              Please enter a valid amount (minimum ₹{PAYMENT_CONFIG.amount.min})
             </motion.p>
           )}
         </AnimatePresence>

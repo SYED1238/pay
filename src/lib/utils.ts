@@ -52,37 +52,45 @@ import { DeviceInfo, DevicePlatform, UPIApp } from './types';
 import { UPI_APPS } from './config';
 
 /**
- * Generate a standard UPI payment URI with proper encoding.
- * NPCI compliant: pa, pn, am, cu, tr, tn
+ * Format amount for standard UPI URI without trailing .00 for integers.
+ */
+export function formatUpiAmount(amount: number): string {
+  if (Number.isInteger(amount)) {
+    return amount.toString();
+  }
+  const fixed = amount.toFixed(2);
+  return fixed.endsWith('.00') ? Math.floor(amount).toString() : fixed;
+}
+
+/**
+ * Generate a standard personal UPI payment URI.
+ * Format:
+ * upi://pay?pa=7975463051@jupiteraxis&pn=SYED%20MOHAMMED%20HAMZA&am=AMOUNT&cu=INR&tn=Payment%20to%20SYED%20MOHAMMED%20HAMZA
  */
 export function generateUPIUri(params: {
   amount: number;
-  referenceId: string;
   description?: string;
+  referenceId?: string;
 }): string {
-  const { payee } = PAYMENT_CONFIG;
+  const upiId = PAYMENT_CONFIG.payee.upiId; // 7975463051@jupiteraxis
+  const name = PAYMENT_CONFIG.payee.name; // SYED MOHAMMED HAMZA
+  const am = formatUpiAmount(params.amount);
+  const encodedName = 'SYED%20MOHAMMED%20HAMZA';
+  const tn = encodeURIComponent(params.description || `Payment to ${name}`).replace(/%20/g, '%20');
 
-  const upiParams = new URLSearchParams();
-  upiParams.set('pa', payee.upiId);
-  upiParams.set('pn', payee.name);
-  upiParams.set('am', params.amount.toFixed(2));
-  upiParams.set('cu', PAYMENT_CONFIG.currency);
-  upiParams.set('tr', params.referenceId);
-  upiParams.set('tn', params.description || `Payment to ${payee.name}`);
-
-  return `upi://pay?${upiParams.toString()}`;
+  return `upi://pay?pa=${upiId}&pn=${encodedName}&am=${am}&cu=INR&tn=${tn}`;
 }
 
 /**
  * Generate an app-specific UPI URI or intent where supported.
- * Falls back gracefully to standard upi://pay scheme.
+ * Uses the exact same standard personal payment parameters.
  */
 export function generateAppSpecificUPIUri(
   app: UPIApp,
   params: {
     amount: number;
-    referenceId: string;
     description?: string;
+    referenceId?: string;
   },
   device?: DeviceInfo
 ): string {
@@ -92,20 +100,15 @@ export function generateAppSpecificUPIUri(
   const appConfig = UPI_APPS[app];
   if (!appConfig) return standardUri;
 
-  const { payee } = PAYMENT_CONFIG;
-  const upiParams = new URLSearchParams();
-  upiParams.set('pa', payee.upiId);
-  upiParams.set('pn', payee.name);
-  upiParams.set('am', params.amount.toFixed(2));
-  upiParams.set('cu', PAYMENT_CONFIG.currency);
-  upiParams.set('tr', params.referenceId);
-  upiParams.set('tn', params.description || `Payment to ${payee.name}`);
-  const queryString = upiParams.toString();
+  const upiId = PAYMENT_CONFIG.payee.upiId;
+  const am = formatUpiAmount(params.amount);
+  const encodedName = 'SYED%20MOHAMMED%20HAMZA';
+  const tn = encodeURIComponent(params.description || 'Payment to SYED MOHAMMED HAMZA').replace(/%20/g, '%20');
+  const queryString = `pa=${upiId}&pn=${encodedName}&am=${am}&cu=INR&tn=${tn}`;
 
-  // If Android and app has a package name, use Chrome Android Intent or custom scheme
+  // If Android, launch through the app's standard UPI scheme
   if (device?.isAndroid) {
     if (app === 'googlepay') {
-      // Tez/Google Pay custom scheme or package intent
       return `tez://upi/pay?${queryString}`;
     }
     if (app === 'phonepe') {

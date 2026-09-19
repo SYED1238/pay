@@ -2,30 +2,40 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PaymentStatus } from '@/lib/types';
+import { PaymentStatus, UPIApp } from '@/lib/types';
 import { formatAmount } from '@/lib/utils';
+import { PAYMENT_CONFIG } from '@/lib/config';
+import CopyUPIId from './CopyUPIId';
 
 interface PaymentStatusDisplayProps {
   status: PaymentStatus;
   amount: number;
   referenceId?: string;
+  hasReturned?: boolean;
   onRetry: () => void;
   onBack: () => void;
   onShowQR?: () => void;
   onCheckStatus?: () => Promise<void> | void;
+  onSelectApp?: (app: UPIApp) => void;
+  onSwitchToBank?: () => void;
 }
 
 export default function PaymentStatusDisplay({
   status,
   amount,
   referenceId,
+  hasReturned = false,
   onRetry,
   onBack,
   onShowQR,
   onCheckStatus,
+  onSelectApp,
+  onSwitchToBank,
 }: PaymentStatusDisplayProps) {
   const [isChecking, setIsChecking] = useState(false);
   const [statusNote, setStatusNote] = useState<string | null>(null);
+  const [userConfirmed, setUserConfirmed] = useState(false);
+  const [showDeclineNotice, setShowDeclineNotice] = useState(false);
 
   const handleCheckStatus = async () => {
     setIsChecking(true);
@@ -34,31 +44,85 @@ export default function PaymentStatusDisplay({
       if (onCheckStatus) {
         await onCheckStatus();
       } else {
-        await new Promise((r) => setTimeout(r, 800));
+        await new Promise((r) => setTimeout(r, 600));
       }
-      setStatusNote('Waiting for confirmation… Personal UPI transfers complete directly in your UPI app. If completed, your funds have been received.');
+      // Requirement 8: Payment status cannot be verified automatically.
+      setStatusNote('Payment status cannot be verified automatically. Please confirm that your payment was completed.');
     } catch {
-      setStatusNote('Unable to verify with provider right now. Please verify in your UPI app.');
+      setStatusNote('Payment status cannot be verified automatically. Please confirm that your payment was completed.');
     } finally {
       setIsChecking(false);
     }
   };
 
+  // User confirmed payment completion flow
+  if (userConfirmed) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="flex flex-col items-center text-center py-6 px-4"
+      >
+        <div
+          className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+          style={{ backgroundColor: 'var(--success-subtle)' }}
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+
+        <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+          Payment Confirmation Acknowledged
+        </h2>
+
+        <p className="text-sm max-w-[320px] mb-4 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+          Thank you! Because this is a direct personal UPI payment, Syed Hamza will verify the credit directly in his account ({PAYMENT_CONFIG.payee.upiId}).
+        </p>
+
+        <div className="px-5 py-2.5 rounded-full mb-5" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+          <span className="text-2xl font-light tabular-nums amount-display" style={{ color: 'var(--accent-champagne)' }}>
+            {formatAmount(amount)}
+          </span>
+        </div>
+
+        {referenceId && (
+          <p className="text-xs font-mono mb-6" style={{ color: 'var(--text-tertiary)' }}>
+            Reference: {referenceId}
+          </p>
+        )}
+
+        <motion.button
+          onClick={onBack}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="px-6 py-2.5 rounded-xl text-sm font-semibold"
+          style={{
+            backgroundColor: 'var(--accent-champagne)',
+            color: 'var(--text-inverse)',
+          }}
+        >
+          Done
+        </motion.button>
+      </motion.div>
+    );
+  }
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        key={status}
+        key={status + String(hasReturned)}
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -12 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-col items-center text-center py-6 px-4"
+        className="flex flex-col items-center text-center py-5 px-3"
       >
-        {/* Pending / App Opening */}
+        {/* Pending / App Opening / Returning */}
         {(status === PaymentStatus.PAYMENT_PENDING || status === PaymentStatus.PAYMENT_APP_OPENING) && (
-          <div className="w-full flex flex-col items-center">
-            {/* Animated Radar Pulse */}
-            <div className="relative w-16 h-16 flex items-center justify-center mb-5">
+          <div className="w-full flex flex-col items-center space-y-4">
+            {/* Radar Pulse animation */}
+            <div className="relative w-14 h-14 flex items-center justify-center">
               <motion.div
                 className="absolute inset-0 rounded-full"
                 style={{ backgroundColor: 'var(--accent-champagne-subtle)' }}
@@ -66,14 +130,14 @@ export default function PaymentStatusDisplay({
                 transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
               />
               <div
-                className="w-14 h-14 rounded-full flex items-center justify-center relative z-10"
+                className="w-12 h-12 rounded-full flex items-center justify-center relative z-10"
                 style={{
                   backgroundColor: 'rgba(201, 169, 110, 0.1)',
                   border: '1px solid rgba(201, 169, 110, 0.3)',
                 }}
               >
                 <motion.div
-                  className="w-6 h-6 rounded-full border-2"
+                  className="w-5 h-5 rounded-full border-2"
                   style={{
                     borderColor: 'var(--accent-champagne)',
                     borderTopColor: 'transparent',
@@ -84,74 +148,53 @@ export default function PaymentStatusDisplay({
               </div>
             </div>
 
-            <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
-              Complete your payment
-            </h2>
-
-            <p className="text-sm max-w-[280px] mb-3" style={{ color: 'var(--text-secondary)' }}>
-              Finish the payment in your UPI app.
-            </p>
+            {/* Requirement 8: "Complete the payment in your UPI app." */}
+            <div>
+              <h2 className="text-xl font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
+                Complete the payment in your UPI app.
+              </h2>
+              <p className="text-xs max-w-[300px] mx-auto" style={{ color: 'var(--text-secondary)' }}>
+                Pay directly to {PAYMENT_CONFIG.payee.name} ({PAYMENT_CONFIG.payee.upiId})
+              </p>
+            </div>
 
             {/* Amount Badge */}
-            <div className="mb-3 px-5 py-2 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+            <div className="px-5 py-2 rounded-full" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
               <span className="text-xl font-light tabular-nums amount-display" style={{ color: 'var(--text-primary)' }}>
                 {formatAmount(amount)}
               </span>
             </div>
 
-            {/* Status Indicator */}
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: 'var(--accent-champagne)' }} />
-              <span className="text-xs font-medium tracking-wide" style={{ color: 'var(--accent-champagne)' }}>
-                Waiting for confirmation…
-              </span>
-            </div>
-
-            {referenceId && (
-              <p className="text-[11px] font-mono mb-5" style={{ color: 'var(--text-tertiary)' }}>
-                Ref: {referenceId}
-              </p>
+            {/* Requirement 8: After returning callout */}
+            {hasReturned && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full rounded-xl p-3 text-left"
+                style={{
+                  backgroundColor: 'rgba(201, 169, 110, 0.08)',
+                  border: '1px solid rgba(201, 169, 110, 0.25)',
+                }}
+              >
+                <div className="flex items-start gap-2.5">
+                  <svg className="flex-shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-champagne)" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <p className="text-xs font-medium leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                    Payment status cannot be verified automatically. Please confirm that your payment was completed.
+                  </p>
+                </div>
+              </motion.div>
             )}
 
-            {/* Check Payment Status Button */}
-            <motion.button
-              onClick={handleCheckStatus}
-              disabled={isChecking}
-              whileHover={{ scale: 1.015 }}
-              whileTap={{ scale: 0.985 }}
-              className="w-full py-3.5 px-4 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 mb-3"
-              style={{
-                backgroundColor: 'var(--bg-elevated)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              {isChecking ? (
-                <>
-                  <motion.div
-                    className="w-4 h-4 rounded-full border-2 border-current"
-                    style={{ borderTopColor: 'transparent' }}
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-                  />
-                  <span>Checking status…</span>
-                </>
-              ) : (
-                <>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
-                  </svg>
-                  <span>Check payment status</span>
-                </>
-              )}
-            </motion.button>
-
-            {/* Status note if checked */}
-            {statusNote && (
+            {/* Status note if manual check was clicked */}
+            {statusNote && !hasReturned && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
-                className="rounded-xl px-3 py-2.5 mb-3 text-left w-full"
+                className="rounded-xl px-3.5 py-2.5 text-left w-full"
                 style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
               >
                 <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -160,13 +203,146 @@ export default function PaymentStatusDisplay({
               </motion.div>
             )}
 
-            {/* Trouble opening app fallback */}
+            {/* Primary Action: User confirms payment completion */}
+            <motion.button
+              onClick={() => setUserConfirmed(true)}
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.985 }}
+              className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+              style={{
+                backgroundColor: 'var(--accent-champagne)',
+                color: 'var(--text-inverse)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)',
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              <span>I have completed the payment</span>
+            </motion.button>
+
+            {/* Check Payment Status Button */}
+            <motion.button
+              onClick={handleCheckStatus}
+              disabled={isChecking}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2"
+              style={{
+                backgroundColor: 'var(--bg-elevated)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
+              {isChecking ? (
+                <>
+                  <motion.div
+                    className="w-3.5 h-3.5 rounded-full border-2 border-current"
+                    style={{ borderTopColor: 'transparent' }}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                  />
+                  <span>Checking status…</span>
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                  </svg>
+                  <span>Check payment status</span>
+                </>
+              )}
+            </motion.button>
+
+            {/* Requirement 9: Neutral decline & bank limit handler */}
+            <div className="w-full pt-1">
+              <button
+                type="button"
+                onClick={() => setShowDeclineNotice((prev) => !prev)}
+                className="text-xs transition-colors hover:underline inline-flex items-center gap-1 cursor-pointer"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                <span>Did your bank or UPI app decline this payment?</span>
+                <span style={{ color: 'var(--accent-champagne)' }}>{showDeclineNotice ? 'Hide' : 'View options'}</span>
+              </button>
+
+              <AnimatePresence>
+                {showDeclineNotice && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-2.5 p-3.5 rounded-xl text-left space-y-2.5"
+                    style={{
+                      backgroundColor: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                  >
+                    <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                      Your UPI app or bank declined this payment. Please try another UPI account or payment method.
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {onShowQR && (
+                        <button
+                          type="button"
+                          onClick={onShowQR}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            color: 'var(--accent-champagne)',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          Show QR Code
+                        </button>
+                      )}
+
+                      {onSwitchToBank && (
+                        <button
+                          type="button"
+                          onClick={onSwitchToBank}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
+                          style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                            color: 'var(--accent-champagne)',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          Pay via Bank Transfer
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={onRetry}
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
+                        style={{
+                          backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                          color: 'var(--text-secondary)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
+                      >
+                        Try another UPI app
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Copy UPI ID */}
+            <div className="w-full pt-1">
+              <CopyUPIId />
+            </div>
+
+            {/* Fallback button: Show QR */}
             {onShowQR && (
               <motion.button
                 onClick={onShowQR}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
-                className="text-xs py-2 px-3 rounded-lg mb-2 transition-colors flex items-center gap-1.5"
+                className="text-xs py-1.5 px-3 rounded-lg transition-colors flex items-center gap-1.5"
                 style={{ color: 'var(--accent-champagne)' }}
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -179,27 +355,27 @@ export default function PaymentStatusDisplay({
               </motion.button>
             )}
 
-            {/* Start Over */}
+            {/* Change amount / Start Over */}
             <motion.button
               onClick={onBack}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="text-xs py-2 px-4 rounded-lg transition-colors"
+              className="text-xs py-1.5 px-4 rounded-lg transition-colors"
               style={{ color: 'var(--text-tertiary)' }}
             >
-              ← Start over
+              ← Change amount / Start over
             </motion.button>
           </div>
         )}
 
-        {/* Confirmed / Payment Received */}
+        {/* Confirmed State */}
         {status === PaymentStatus.PAYMENT_CONFIRMED && (
           <div className="w-full flex flex-col items-center">
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
+              className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
               style={{ backgroundColor: 'var(--success-subtle)' }}
             >
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -208,14 +384,14 @@ export default function PaymentStatusDisplay({
             </motion.div>
 
             <h2 className="text-xl font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
-              Payment received
+              Payment Confirmed
             </h2>
 
             <p className="text-sm max-w-[280px] mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Your payment has been successfully confirmed.
+              Your transfer has been successfully processed.
             </p>
 
-            <div className="px-5 py-2.5 rounded-full mb-4" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div className="px-5 py-2.5 rounded-full mb-4" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
               <span className="text-2xl font-light tabular-nums amount-display" style={{ color: 'var(--success)' }}>
                 {formatAmount(amount)}
               </span>
@@ -234,7 +410,7 @@ export default function PaymentStatusDisplay({
               className="px-6 py-2.5 rounded-xl text-sm font-medium"
               style={{
                 backgroundColor: 'var(--accent-champagne)',
-                color: '#080808',
+                color: 'var(--text-inverse)',
               }}
             >
               Done
@@ -249,7 +425,7 @@ export default function PaymentStatusDisplay({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
+              className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
               style={{ backgroundColor: 'var(--error-subtle)' }}
             >
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -261,19 +437,19 @@ export default function PaymentStatusDisplay({
               Payment wasn&apos;t completed
             </h2>
 
-            <p className="text-sm max-w-[280px]" style={{ color: 'var(--text-secondary)' }}>
-              The payment may have been declined or cancelled. Please try again or choose another UPI app.
+            <p className="text-sm max-w-[300px] mb-4" style={{ color: 'var(--text-secondary)' }}>
+              Your UPI app or bank declined this payment. Please try another UPI account or payment method.
             </p>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-col sm:flex-row gap-3 mt-2 w-full max-w-[280px]">
               <motion.button
                 onClick={onRetry}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium"
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                 style={{
                   backgroundColor: 'var(--accent-champagne)',
-                  color: '#080808',
+                  color: 'var(--text-inverse)',
                 }}
               >
                 Try again
@@ -283,7 +459,7 @@ export default function PaymentStatusDisplay({
                 onClick={onBack}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
                 style={{
                   backgroundColor: 'var(--bg-elevated)',
                   color: 'var(--text-secondary)',
@@ -303,7 +479,7 @@ export default function PaymentStatusDisplay({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
+              className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
               style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
             >
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -315,11 +491,11 @@ export default function PaymentStatusDisplay({
               Payment cancelled
             </h2>
 
-            <p className="text-sm max-w-[280px]" style={{ color: 'var(--text-secondary)' }}>
+            <p className="text-sm max-w-[280px] mb-4" style={{ color: 'var(--text-secondary)' }}>
               You cancelled this payment. No money has been deducted.
             </p>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-3 mt-2">
               <motion.button
                 onClick={onRetry}
                 whileHover={{ scale: 1.02 }}
@@ -327,7 +503,7 @@ export default function PaymentStatusDisplay({
                 className="px-5 py-2.5 rounded-xl text-sm font-medium"
                 style={{
                   backgroundColor: 'var(--accent-champagne)',
-                  color: '#080808',
+                  color: 'var(--text-inverse)',
                 }}
               >
                 Pay again
@@ -357,7 +533,7 @@ export default function PaymentStatusDisplay({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-6"
+              className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
               style={{ backgroundColor: 'var(--warning-subtle)' }}
             >
               <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
@@ -381,7 +557,7 @@ export default function PaymentStatusDisplay({
               className="mt-6 px-5 py-2.5 rounded-xl text-sm font-medium"
               style={{
                 backgroundColor: 'var(--accent-champagne)',
-                color: '#080808',
+                color: 'var(--text-inverse)',
               }}
             >
               Start over

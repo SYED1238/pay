@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const amount = validateAmount(String(rawAmount));
     if (amount === null) {
       return Response.json(
-        { error: `Invalid amount. Must be between ${PAYMENT_CONFIG.currencySymbol}${PAYMENT_CONFIG.amount.min} and ${PAYMENT_CONFIG.currencySymbol}${PAYMENT_CONFIG.amount.max.toLocaleString('en-IN')}` },
+        { error: `Invalid amount. Must be at least ${PAYMENT_CONFIG.currencySymbol}${PAYMENT_CONFIG.amount.min}` },
         { status: 400 }
       );
     }

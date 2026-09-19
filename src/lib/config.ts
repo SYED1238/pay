@@ -10,7 +10,7 @@ export const PAYMENT_CONFIG = {
   currencySymbol: '₹',
   amount: {
     min: 1,
-    max: 100000,
+    max: 10000000,
     maxDecimals: 2,
   },
   transaction: {
