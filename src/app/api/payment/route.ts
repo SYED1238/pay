@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
       },
       upiUri,
     });
-  } catch {
+  } catch (err) {
+    console.error('Payment API error:', err);
     return Response.json(
       { error: 'Failed to create payment' },
       { status: 500 }

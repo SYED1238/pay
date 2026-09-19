@@ -3,8 +3,8 @@ import { UPIAppConfig, UPIApp } from './types';
 // ─── Payment Configuration ────────────────────────────────────
 export const PAYMENT_CONFIG = {
   payee: {
-    upiId: 'syedhamza1238-4@okaxis',
-    name: 'Syed Hamza',
+    upiId: '7975463051@jupiteraxis',
+    name: 'SYED MOHAMMED HAMZA',
   },
   currency: 'INR',
   currencySymbol: '₹',

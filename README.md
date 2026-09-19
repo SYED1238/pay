@@ -5,7 +5,8 @@ A luxury fintech payment terminal built with Next.js 16, React 19, TypeScript, T
 Supports three dedicated payment rails unified under a single, quiet-luxury terminal interface:
 
 1. 🇮🇳 **Domestic UPI (India)**
-   - Destination: `syedhamza1238-4@okaxis`
+   - Destination: `7975463051@jupiteraxis`
+   - Payee: `SYED MOHAMMED HAMZA`
    - Mobile: UPI App-First flow with native app launch (Google Pay, PhonePe, Paytm, BHIM, Generic) + QR fallback
    - Desktop: Instant dynamic QR generation + 1-click UPI ID copy
 
