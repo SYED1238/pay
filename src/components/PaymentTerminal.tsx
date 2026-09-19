@@ -739,6 +739,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
               >
                 <BankTransferTerminal
                   initialAmount={validAmount}
+                  device={device}
                   onBack={() => setActiveRail('upi')}
                 />
               </motion.div>

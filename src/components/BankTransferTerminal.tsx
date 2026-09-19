@@ -1,16 +1,72 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BANK_TRANSFER_CONFIG, PAYMENT_CONFIG } from '@/lib/config';
-import { copyToClipboard, formatAmount, validateAmount } from '@/lib/utils';
+import { copyToClipboard, formatAmount, validateAmount, detectDevice } from '@/lib/utils';
+import { DeviceInfo } from '@/lib/types';
 
 interface BankTransferTerminalProps {
   initialAmount?: number | null;
+  device?: DeviceInfo;
   onBack?: () => void;
 }
 
-export default function BankTransferTerminal({ initialAmount, onBack }: BankTransferTerminalProps) {
+interface BankingAppConfig {
+  id: string;
+  name: string;
+  packageName: string;
+  scheme: string;
+  intentUrl: string;
+  color: string;
+  fallbackMsg: string;
+}
+
+const BANKING_APPS: BankingAppConfig[] = [
+  {
+    id: 'googlepay',
+    name: 'Google Pay',
+    packageName: 'com.google.android.apps.nbu.paisa.user',
+    scheme: 'tez://',
+    intentUrl:
+      'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.google.android.apps.nbu.paisa.user;end',
+    color: '#4285F4',
+    fallbackMsg: "Google Pay couldn't be opened. Please open Google Pay manually and choose Bank Transfer.",
+  },
+  {
+    id: 'phonepe',
+    name: 'PhonePe',
+    packageName: 'com.phonepe.app',
+    scheme: 'phonepe://',
+    intentUrl:
+      'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.phonepe.app;end',
+    color: '#5F259F',
+    fallbackMsg: "PhonePe couldn't be opened. Please open PhonePe manually and choose Bank Transfer.",
+  },
+  {
+    id: 'paytm',
+    name: 'Paytm',
+    packageName: 'net.one97.paytm',
+    scheme: 'paytmmp://',
+    intentUrl:
+      'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=net.one97.paytm;end',
+    color: '#00BAF2',
+    fallbackMsg: "Paytm couldn't be opened. Please open Paytm manually and choose Bank Transfer.",
+  },
+  {
+    id: 'bhim',
+    name: 'BHIM',
+    packageName: 'in.org.npci.upiapp',
+    scheme: 'bhim://',
+    intentUrl:
+      'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=in.org.npci.upiapp;end',
+    color: '#007A3D',
+    fallbackMsg: "BHIM couldn't be opened. Please open BHIM manually and choose Bank Transfer.",
+  },
+];
+
+export default function BankTransferTerminal({ initialAmount, device: propDevice, onBack }: BankTransferTerminalProps) {
+  const [device, setDevice] = useState<DeviceInfo>(() => propDevice || detectDevice());
   const [amount, setAmount] = useState<string>(
     initialAmount && initialAmount > 0 ? initialAmount.toString() : '500'
   );
@@ -18,8 +74,20 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
   const [isCompleted, setIsCompleted] = useState(false);
   const [utrNumber, setUtrNumber] = useState('');
   const [utrSaved, setUtrSaved] = useState(false);
+  const [launchingAppId, setLaunchingAppId] = useState<string | null>(null);
+  const [modalApp, setModalApp] = useState<BankingAppConfig | null>(null);
+  const [modalIsDesktop, setModalIsDesktop] = useState(false);
+
   const detailsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (propDevice) {
+      setDevice(propDevice);
+    } else {
+      setDevice(detectDevice());
+    }
+  }, [propDevice]);
 
   const validAmount = validateAmount(amount);
 
@@ -50,17 +118,80 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
     }
   }, []);
 
-  // Safe launch for banking apps (informs user that they will open the app and use Bank Transfer)
-  const handleLaunchApp = useCallback((scheme: string) => {
+  // Attempt to launch banking app or show graceful fallback
+  const attemptLaunch = useCallback((app: BankingAppConfig) => {
+    setLaunchingAppId(app.id);
+    let appOpened = false;
+
+    const onVisibilityChange = () => {
+      if (document.hidden || document.visibilityState === 'hidden') {
+        appOpened = true;
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('blur', onVisibilityChange);
+
+    // Try intent URL first
     try {
-      window.location.href = scheme;
+      window.location.href = app.intentUrl;
     } catch {
-      // Fallback gracefully
+      // Fall back to custom scheme
+      try {
+        window.location.href = app.scheme;
+      } catch {
+        // Handled by timer below
+      }
     }
+
+    // Secondary attempt with custom scheme if not yet hidden
+    const secondaryTimer = setTimeout(() => {
+      if (!appOpened && document.visibilityState === 'visible') {
+        try {
+          window.location.href = app.scheme;
+        } catch {
+          // ignore
+        }
+      }
+    }, 450);
+
+    // Final check after 1350ms: if page is still visible, app failed to open or was blocked
+    const fallbackTimer = setTimeout(() => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onVisibilityChange);
+      setLaunchingAppId(null);
+
+      if (!appOpened && document.visibilityState === 'visible') {
+        setModalApp(app);
+        setModalIsDesktop(false);
+      }
+    }, 1350);
+
+    return () => {
+      clearTimeout(secondaryTimer);
+      clearTimeout(fallbackTimer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onVisibilityChange);
+    };
   }, []);
 
+  const handleAppClick = useCallback(
+    (app: BankingAppConfig) => {
+      // Desktop behavior per Requirement 7: Don't attempt unreliable app launching
+      if (!device.isMobile && !device.isAndroid) {
+        setModalApp(app);
+        setModalIsDesktop(true);
+        return;
+      }
+
+      // Android / Mobile behavior per Requirement 1-6
+      attemptLaunch(app);
+    },
+    [device, attemptLaunch]
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {/* ── Header ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
@@ -140,7 +271,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                     onClick={() => setAmount(preset.toString())}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    className="px-3 py-1 rounded-full text-xs tabular-nums transition-colors"
+                    className="px-3 py-1 rounded-full text-xs tabular-nums transition-colors cursor-pointer"
                     style={{
                       backgroundColor:
                         amount === preset.toString() ? 'var(--accent-champagne-subtle)' : 'var(--bg-surface)',
@@ -163,7 +294,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                 onClick={handleScrollToDetails}
                 whileHover={{ scale: 1.015 }}
                 whileTap={{ scale: 0.985 }}
-                className="w-full py-4 px-5 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2.5 transition-all relative overflow-hidden"
+                className="w-full py-4 px-5 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2.5 transition-all relative overflow-hidden cursor-pointer"
                 style={{
                   backgroundColor: 'var(--accent-champagne)',
                   color: 'var(--text-inverse)',
@@ -214,7 +345,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                   onClick={() => handleCopy('name', BANK_TRANSFER_CONFIG.accountHolderName)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors flex-shrink-0"
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors flex-shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: copiedField === 'name' ? 'var(--success-subtle)' : 'var(--bg-elevated)',
                     color: copiedField === 'name' ? 'var(--success)' : 'var(--accent-champagne)',
@@ -256,7 +387,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                   onClick={() => handleCopy('account', BANK_TRANSFER_CONFIG.accountNumber)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: copiedField === 'account' ? 'var(--success-subtle)' : 'var(--bg-elevated)',
                     color: copiedField === 'account' ? 'var(--success)' : 'var(--accent-champagne)',
@@ -298,7 +429,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                   onClick={() => handleCopy('ifsc', BANK_TRANSFER_CONFIG.ifsc)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0"
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors flex-shrink-0 cursor-pointer"
                   style={{
                     backgroundColor: copiedField === 'ifsc' ? 'var(--success-subtle)' : 'var(--bg-elevated)',
                     color: copiedField === 'ifsc' ? 'var(--success)' : 'var(--accent-champagne)',
@@ -336,7 +467,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
               </div>
             </div>
 
-            {/* ── Mobile Banking/UPI App Quick Switchers ─────────────── */}
+            {/* ── Functional Mobile Banking/UPI App Buttons (Requirement 1-6) ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs uppercase tracking-wider font-medium" style={{ color: 'var(--text-tertiary)' }}>
@@ -348,29 +479,40 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
               </div>
 
               <div className="grid grid-cols-4 gap-2">
-                {[
-                  { name: 'Google Pay', scheme: 'tez://', icon: 'gpay', color: '#4285F4' },
-                  { name: 'PhonePe', scheme: 'phonepe://', icon: 'phonepe', color: '#5F259F' },
-                  { name: 'Paytm', scheme: 'paytmmp://', icon: 'paytm', color: '#00BAF2' },
-                  { name: 'BHIM', scheme: 'bhim://', icon: 'bhim', color: '#007A3D' },
-                ].map((app) => (
-                  <button
-                    key={app.name}
-                    type="button"
-                    onClick={() => handleLaunchApp(app.scheme)}
-                    className="p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
-                    title={`Open ${app.name} to choose Bank Transfer`}
-                  >
-                    <span className="w-2.5 h-2.5 rounded-full mb-1" style={{ backgroundColor: app.color }} />
-                    <span className="text-[11px] font-medium leading-tight" style={{ color: 'var(--text-primary)' }}>
-                      {app.name}
-                    </span>
-                  </button>
-                ))}
+                {BANKING_APPS.map((app) => {
+                  const isLaunching = launchingAppId === app.id;
+                  return (
+                    <motion.button
+                      key={app.id}
+                      type="button"
+                      onClick={() => handleAppClick(app)}
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.96 }}
+                      disabled={isLaunching}
+                      className="p-2.5 rounded-xl flex flex-col items-center justify-center text-center transition-all cursor-pointer relative overflow-hidden"
+                      style={{
+                        backgroundColor: isLaunching ? 'rgba(201, 169, 110, 0.1)' : 'var(--bg-elevated)',
+                        border: `1px solid ${isLaunching ? 'var(--accent-champagne)' : 'var(--border-subtle)'}`,
+                      }}
+                      title={`Open ${app.name} to choose Bank Transfer`}
+                    >
+                      {isLaunching ? (
+                        <div className="w-2.5 h-2.5 rounded-full border border-current border-t-transparent animate-spin mb-1" style={{ color: 'var(--accent-champagne)' }} />
+                      ) : (
+                        <span className="w-2.5 h-2.5 rounded-full mb-1" style={{ backgroundColor: app.color }} />
+                      )}
+                      <span className="text-[11px] font-semibold leading-tight block" style={{ color: 'var(--text-primary)' }}>
+                        {app.name}
+                      </span>
+                      <span className="text-[8px] uppercase tracking-wider mt-0.5" style={{ color: isLaunching ? 'var(--accent-champagne)' : 'var(--text-tertiary)' }}>
+                        {isLaunching ? 'Opening…' : 'Transfer'}
+                      </span>
+                    </motion.button>
+                  );
+                })}
               </div>
               <p className="text-[10px] text-center mt-1.5" style={{ color: 'var(--text-tertiary)' }}>
-                Direct bank transfers require selecting &quot;To Bank Account&quot; inside your app.
+                Tapping attempts to launch your app. Inside, choose &quot;To Bank Account&quot; &amp; paste details.
               </p>
             </div>
 
@@ -455,14 +597,14 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
               </div>
             </div>
 
-            {/* ── Confirmation Button: I've completed the bank transfer (Requirement 10) ── */}
+            {/* ── Confirmation Button: I've completed the bank transfer ── */}
             <div>
               <motion.button
                 type="button"
                 onClick={() => setIsCompleted(true)}
                 whileHover={{ scale: 1.015 }}
                 whileTap={{ scale: 0.985 }}
-                className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
                 style={{
                   backgroundColor: 'var(--bg-elevated)',
                   color: 'var(--text-primary)',
@@ -476,7 +618,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
               </motion.button>
             </div>
 
-            {/* ── Security Reassurance (Requirement 11) ───────────────── */}
+            {/* ── Security Reassurance ───────────────── */}
             <div className="pt-1 text-center">
               <p className="text-[10px] leading-relaxed max-w-[340px] mx-auto" style={{ color: 'var(--text-tertiary)' }}>
                 🔒 Security Notice: We never ask for your UPI PIN, OTP, debit card details, CVV, password, or banking login credentials.
@@ -489,7 +631,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                 <button
                   type="button"
                   onClick={onBack}
-                  className="text-xs py-1.5 px-3 rounded-lg transition-colors"
+                  className="text-xs py-1.5 px-3 rounded-lg transition-colors cursor-pointer"
                   style={{ color: 'var(--text-tertiary)' }}
                 >
                   ← Back to options
@@ -498,7 +640,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
             )}
           </motion.div>
         ) : (
-          /* ── Honest "Awaiting Verification" State (Requirement 11) ─ */
+          /* ── Honest "Awaiting Verification" State ─ */
           <motion.div
             key="bank-submitted"
             initial={{ opacity: 0, scale: 0.96 }}
@@ -606,7 +748,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
                     }
                   }}
                   disabled={!utrNumber.trim()}
-                  className="px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors"
+                  className="px-3 py-2 rounded-lg text-xs font-medium disabled:opacity-40 transition-colors cursor-pointer"
                   style={{
                     backgroundColor: 'var(--accent-champagne)',
                     color: 'var(--text-inverse)',
@@ -632,7 +774,7 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
               <button
                 type="button"
                 onClick={() => setIsCompleted(false)}
-                className="w-full py-3 px-4 rounded-xl text-xs font-medium transition-colors"
+                className="w-full py-3 px-4 rounded-xl text-xs font-medium transition-colors cursor-pointer"
                 style={{
                   backgroundColor: 'var(--bg-elevated)',
                   color: 'var(--text-primary)',
@@ -643,6 +785,215 @@ export default function BankTransferTerminal({ initialAmount, onBack }: BankTran
               </button>
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Bottom Sheet / Fallback Modal (Requirement 6 & 7) ───────── */}
+      <AnimatePresence>
+        {modalApp && (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setModalApp(null)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm cursor-pointer"
+            />
+
+            {/* Modal Sheet Container */}
+            <motion.div
+              initial={device.isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 10 }}
+              animate={device.isMobile ? { y: 0 } : { opacity: 1, scale: 1, y: 0 }}
+              exit={device.isMobile ? { y: '100%' } : { opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+              className="relative z-10 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 shadow-2xl overflow-hidden space-y-4 text-left max-h-[90dvh] overflow-y-auto"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-subtle)',
+                boxShadow: '0 -10px 40px rgba(0, 0, 0, 0.6)',
+              }}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between pb-3 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                <div className="flex items-center gap-3">
+                  <span className="w-3.5 h-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: modalApp.color }} />
+                  <div>
+                    <h3 className="text-base font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                      Open {modalApp.name}
+                    </h3>
+                    <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--accent-champagne)' }}>
+                      Choose Bank Transfer / To Bank Account
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModalApp(null)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center transition-colors cursor-pointer"
+                  style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}
+                  aria-label="Close"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                  </svg>
+                </button>
+              </div>
+
+              {/* Status Notice / Fallback Message */}
+              <div
+                className="p-3 rounded-xl border text-xs leading-relaxed"
+                style={{
+                  backgroundColor: modalIsDesktop ? 'var(--bg-elevated)' : 'rgba(251, 191, 36, 0.08)',
+                  borderColor: modalIsDesktop ? 'var(--border-subtle)' : 'rgba(251, 191, 36, 0.25)',
+                  color: modalIsDesktop ? 'var(--text-secondary)' : '#FDE68A',
+                }}
+              >
+                {modalIsDesktop ? (
+                  <>
+                    <p className="font-semibold text-xs mb-0.5" style={{ color: 'var(--text-primary)' }}>
+                      Bank transfer is completed inside your banking app.
+                    </p>
+                    <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                      Open {modalApp.name} on your mobile phone, navigate to <strong>Bank Transfer / To Bank Account</strong>, and transfer to the credentials below.
+                    </p>
+                  </>
+                ) : (
+                  <p>{modalApp.fallbackMsg}</p>
+                )}
+              </div>
+
+              {/* Bank Credentials Cards */}
+              <div className="space-y-2.5">
+                {/* Account Number */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider block" style={{ color: 'var(--text-tertiary)' }}>
+                      Account Number
+                    </span>
+                    <span className="text-sm font-mono font-bold tracking-wider select-all" style={{ color: 'var(--text-primary)' }}>
+                      {BANK_TRANSFER_CONFIG.accountNumber}
+                    </span>
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => handleCopy('modal-account', BANK_TRANSFER_CONFIG.accountNumber)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    style={{
+                      backgroundColor: copiedField === 'modal-account' ? 'var(--success-subtle)' : 'var(--bg-surface)',
+                      color: copiedField === 'modal-account' ? 'var(--success)' : 'var(--accent-champagne)',
+                      border: `1px solid ${copiedField === 'modal-account' ? 'var(--success)' : 'var(--border-subtle)'}`,
+                    }}
+                  >
+                    {copiedField === 'modal-account' ? 'Copied' : 'Copy'}
+                  </motion.button>
+                </div>
+
+                {/* IFSC Code */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider block" style={{ color: 'var(--text-tertiary)' }}>
+                      IFSC Code
+                    </span>
+                    <span className="text-sm font-mono font-bold tracking-wider select-all" style={{ color: 'var(--text-primary)' }}>
+                      {BANK_TRANSFER_CONFIG.ifsc}
+                    </span>
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => handleCopy('modal-ifsc', BANK_TRANSFER_CONFIG.ifsc)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    style={{
+                      backgroundColor: copiedField === 'modal-ifsc' ? 'var(--success-subtle)' : 'var(--bg-surface)',
+                      color: copiedField === 'modal-ifsc' ? 'var(--success)' : 'var(--accent-champagne)',
+                      border: `1px solid ${copiedField === 'modal-ifsc' ? 'var(--success)' : 'var(--border-subtle)'}`,
+                    }}
+                  >
+                    {copiedField === 'modal-ifsc' ? 'Copied' : 'Copy'}
+                  </motion.button>
+                </div>
+
+                {/* Account Name */}
+                <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-wider block" style={{ color: 'var(--text-tertiary)' }}>
+                      Account Name
+                    </span>
+                    <span className="text-xs font-semibold tracking-wide" style={{ color: 'var(--text-primary)' }}>
+                      {BANK_TRANSFER_CONFIG.accountHolderName}
+                    </span>
+                  </div>
+                  <motion.button
+                    type="button"
+                    onClick={() => handleCopy('modal-name', BANK_TRANSFER_CONFIG.accountHolderName)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
+                    style={{
+                      backgroundColor: copiedField === 'modal-name' ? 'var(--success-subtle)' : 'var(--bg-surface)',
+                      color: copiedField === 'modal-name' ? 'var(--success)' : 'var(--accent-champagne)',
+                      border: `1px solid ${copiedField === 'modal-name' ? 'var(--success)' : 'var(--border-subtle)'}`,
+                    }}
+                  >
+                    {copiedField === 'modal-name' ? 'Copied' : 'Copy'}
+                  </motion.button>
+                </div>
+
+                {/* Bank / Branch */}
+                <div className="p-2.5 rounded-xl text-left" style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}>
+                  <span className="text-[10px] uppercase tracking-wider block" style={{ color: 'var(--text-tertiary)' }}>
+                    Bank & Branch
+                  </span>
+                  <span className="text-xs font-medium block mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                    {BANK_TRANSFER_CONFIG.bankName} — {BANK_TRANSFER_CONFIG.branch}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 space-y-2">
+                {!modalIsDesktop && (
+                  <motion.button
+                    type="button"
+                    onClick={() => attemptLaunch(modalApp)}
+                    whileHover={{ scale: 1.015 }}
+                    whileTap={{ scale: 0.985 }}
+                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                    style={{
+                      backgroundColor: 'var(--accent-champagne)',
+                      color: 'var(--text-inverse)',
+                    }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                      <polyline points="15 3 21 3 21 9"/>
+                      <line x1="10" y1="14" x2="21" y2="3"/>
+                    </svg>
+                    <span>Open App Again</span>
+                  </motion.button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setModalApp(null)}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-medium transition-colors cursor-pointer text-center"
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border-subtle)',
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
