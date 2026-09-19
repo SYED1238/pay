@@ -334,8 +334,8 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                       >
                         {/* UPI Arrow Icon */}
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                          <path d="M4 15l7-10 2 5-5 5h7l2 3H4z" fill="#080808"/>
-                          <path d="M20 9l-7 10-2-5 5-5h-7l-2-3h13z" fill="#080808" opacity="0.65"/>
+                          <path d="M4 15l7-10 2 5-5 5h7l2 3H4z" fill="#080808" />
+                          <path d="M20 9l-7 10-2-5 5-5h-7l-2-3h13z" fill="#080808" opacity="0.65" />
                         </svg>
                         <span>Pay {validAmount ? formatAmount(validAmount) : ''} with UPI</span>
                       </motion.button>
@@ -388,10 +388,10 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                           }}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <rect x="3" y="3" width="7" height="7"/>
-                            <rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/>
-                            <rect x="3" y="14" width="7" height="7"/>
+                            <rect x="3" y="3" width="7" height="7" />
+                            <rect x="14" y="3" width="7" height="7" />
+                            <rect x="14" y="14" width="7" height="7" />
+                            <rect x="3" y="14" width="7" height="7" />
                           </svg>
                           <span>{showMobileQR ? 'Hide QR Code' : 'Show QR Code'}</span>
                         </motion.button>
@@ -492,7 +492,7 @@ export default function PaymentTerminal({ initialAmount, deviceOverride }: Payme
                         }}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
                         </svg>
                         <span>Check payment status</span>
                       </motion.button>

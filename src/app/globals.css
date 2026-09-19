@@ -2,28 +2,34 @@
 
 /* ─── Design Tokens ─────────────────────────────────────── */
 :root {
-  --bg-primary: #080808;
-  --bg-surface: #111111;
-  --bg-elevated: #171717;
-  --bg-hover: #1c1c1c;
+  /* Mid-range slate graphite: neither pitch black nor bright white */
+  --bg-primary: #1C1E23;
+  --bg-surface: #24272F;
+  --bg-elevated: #2D323C;
+  --bg-hover: #363C48;
 
-  --text-primary: #F5F5F5;
-  --text-secondary: #8C8C8C;
-  --text-tertiary: #5a5a5a;
+  /* Refined, quiet typography */
+  --text-primary: #F2F3F5;
+  --text-secondary: #9CA3AF;
+  --text-tertiary: #6B7280;
+  --text-inverse: #16181D;
 
+  /* Subtle hairline borders */
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-medium: rgba(255, 255, 255, 0.12);
+  --border-medium: rgba(255, 255, 255, 0.14);
 
-  --accent-champagne: #C9A96E;
-  --accent-champagne-subtle: rgba(201, 169, 110, 0.12);
-  --accent-champagne-glow: rgba(201, 169, 110, 0.06);
+  /* Minimal titanium ecru accent: calm, understated, zero chapri */
+  --accent-champagne: #E4DDD3;
+  --accent-champagne-subtle: rgba(228, 221, 211, 0.1);
+  --accent-champagne-glow: rgba(228, 221, 211, 0.03);
 
-  --success: #34A853;
-  --success-subtle: rgba(52, 168, 83, 0.12);
-  --error: #D93025;
-  --error-subtle: rgba(217, 48, 37, 0.12);
-  --warning: #F9AB00;
-  --warning-subtle: rgba(249, 171, 0, 0.12);
+  /* Muted elegant feedback tokens */
+  --success: #34D399;
+  --success-subtle: rgba(52, 211, 153, 0.12);
+  --error: #F87171;
+  --error-subtle: rgba(248, 113, 113, 0.12);
+  --warning: #FBBF24;
+  --warning-subtle: rgba(251, 191, 36, 0.12);
 
   --radius-sm: 12px;
   --radius-md: 20px;
@@ -83,7 +89,9 @@ body {
 }
 
 @keyframes blink {
-  to { opacity: 0; }
+  to {
+    opacity: 0;
+  }
 }
 
 /* ─── Amount Display ────────────────────────────────────── */
@@ -158,11 +166,9 @@ input::placeholder {
   left: -10%;
   width: 60%;
   height: 60%;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(201, 169, 110, 0.03) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at center,
+      rgba(201, 169, 110, 0.03) 0%,
+      transparent 70%);
   animation: ambient-drift 25s ease-in-out infinite alternate;
 }
 
@@ -173,18 +179,24 @@ input::placeholder {
   right: -15%;
   width: 50%;
   height: 50%;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(201, 169, 110, 0.02) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at center,
+      rgba(201, 169, 110, 0.02) 0%,
+      transparent 70%);
   animation: ambient-drift 30s ease-in-out infinite alternate-reverse;
 }
 
 @keyframes ambient-drift {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(5%, 3%) scale(1.05); }
-  100% { transform: translate(-3%, -2%) scale(0.98); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(5%, 3%) scale(1.05);
+  }
+
+  100% {
+    transform: translate(-3%, -2%) scale(0.98);
+  }
 }
 
 /* ─── Noise Texture ─────────────────────────────────────── */
@@ -207,17 +219,16 @@ input::placeholder {
   transform: translate(-50%, -50%);
   width: 120%;
   height: 120%;
-  background: radial-gradient(
-    ellipse at center,
-    var(--accent-champagne-glow) 0%,
-    transparent 55%
-  );
+  background: radial-gradient(ellipse at center,
+      var(--accent-champagne-glow) 0%,
+      transparent 55%);
   pointer-events: none;
   z-index: -1;
 }
 
 /* ─── Reduced Motion ────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
+
   .ambient-bg::before,
   .ambient-bg::after {
     animation: none;
