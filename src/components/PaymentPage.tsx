@@ -30,13 +30,13 @@ export default function PaymentPage() {
     <div className="flex-1 flex flex-col min-h-dvh">
       {/* Mobile Layout */}
       {isMobileLayout ? (
-        <div className="flex-1 flex flex-col px-4 pt-8 pb-6 safe-area-bottom">
+        <div className="flex-1 flex flex-col px-4 pt-7 pb-6 safe-area-bottom max-w-[460px] mx-auto w-full">
           {/* Brand */}
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0 }}
-            className="mb-6"
+            transition={{ duration: 0.4 }}
+            className="mb-4"
           >
             <p className="text-[11px] uppercase tracking-[0.2em] font-medium" style={{ color: 'var(--accent-champagne)' }}>
               {PAYMENT_CONFIG.payee.name}
@@ -45,16 +45,16 @@ export default function PaymentPage() {
 
           {/* Headline */}
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-            className="mb-8"
+            transition={{ duration: 0.4, delay: 0.05 }}
+            className="mb-6"
           >
             <h1 className="text-2xl font-semibold tracking-tight leading-tight" style={{ color: 'var(--text-primary)' }}>
-              Simple. Direct. UPI.
+              Pay, without the clutter.
             </h1>
-            <p className="text-sm mt-2 max-w-[300px]" style={{ color: 'var(--text-secondary)' }}>
-              Enter an amount and pay directly using your preferred UPI app.
+            <p className="text-xs mt-1.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+              Simple payment options for wherever you are.
             </p>
           </motion.div>
 
@@ -70,8 +70,8 @@ export default function PaymentPage() {
             transition={{ delay: 0.8 }}
             className="mt-8 text-center"
           >
-            <p className="text-[10px] tracking-wider" style={{ color: 'var(--text-tertiary)' }}>
-              UPI payment experience by {PAYMENT_CONFIG.payee.name}
+            <p className="text-[10px] tracking-wider uppercase" style={{ color: 'var(--text-tertiary)' }}>
+              {PAYMENT_CONFIG.payee.name} · UPI · PayPal · USDT
             </p>
           </motion.footer>
         </div>
@@ -87,7 +87,7 @@ export default function PaymentPage() {
               className="flex-1 max-w-[460px]"
             >
               {/* Brand */}
-              <p className="text-[11px] uppercase tracking-[0.2em] font-medium mb-8" style={{ color: 'var(--accent-champagne)' }}>
+              <p className="text-[11px] uppercase tracking-[0.2em] font-medium mb-7" style={{ color: 'var(--accent-champagne)' }}>
                 {PAYMENT_CONFIG.payee.name}
               </p>
 
@@ -103,36 +103,55 @@ export default function PaymentPage() {
 
               {/* Supporting text */}
               <p className="text-base mt-6 leading-relaxed max-w-[380px]" style={{ color: 'var(--text-secondary)' }}>
-                Enter an amount and pay directly using your preferred UPI app. Secure, simple, and instant.
+                Simple payment options for wherever you are.
               </p>
 
-              {/* Features */}
+              {/* 3 Payment Rails Feature List */}
               <div className="mt-10 space-y-4">
                 {[
-                  { label: 'Direct UPI', desc: 'Pay through any UPI-enabled app' },
-                  { label: 'No sign-up', desc: 'No account or registration needed' },
-                  { label: 'Secure', desc: 'Processed through the UPI ecosystem' },
+                  {
+                    route: 'India',
+                    label: 'UPI Payments',
+                    desc: 'Instant transfers via Google Pay, PhonePe, Paytm, or BHIM',
+                    badge: '🇮🇳',
+                  },
+                  {
+                    route: 'International',
+                    label: 'PayPal Global',
+                    desc: 'Secure checkout in USD, EUR, GBP, CAD, or AUD',
+                    badge: '🌎',
+                  },
+                  {
+                    route: 'Crypto',
+                    label: 'USDT (TRON)',
+                    desc: 'Direct TRC20 wallet transfer with instant address & QR code',
+                    badge: '₮',
+                  },
                 ].map((feature, i) => (
                   <motion.div
                     key={feature.label}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 + i * 0.1, duration: 0.5 }}
-                    className="flex items-start gap-3"
+                    transition={{ delay: 0.35 + i * 0.1, duration: 0.5 }}
+                    className="flex items-start gap-3.5 p-3 rounded-2xl transition-colors"
+                    style={{ backgroundColor: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-subtle)' }}
                   >
                     <div
-                      className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ backgroundColor: 'var(--accent-champagne-subtle)' }}
+                      className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0 text-sm mt-0.5"
+                      style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }}
                     >
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5.5L4 7.5L8 3" stroke="var(--accent-champagne)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
+                      {feature.badge}
                     </div>
-                    <div>
-                      <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        {feature.label}
-                      </p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--accent-champagne)' }}>
+                          {feature.route}
+                        </span>
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-primary)' }}>
+                          · {feature.label}
+                        </span>
+                      </div>
+                      <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                         {feature.desc}
                       </p>
                     </div>
@@ -145,10 +164,10 @@ export default function PaymentPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 1 }}
-                className="mt-12 text-[10px] tracking-wider"
+                className="mt-10 text-[10px] tracking-wider uppercase"
                 style={{ color: 'var(--text-tertiary)' }}
               >
-                UPI payment experience by {PAYMENT_CONFIG.payee.name}
+                Payment terminal by {PAYMENT_CONFIG.payee.name}
               </motion.p>
             </motion.div>
 

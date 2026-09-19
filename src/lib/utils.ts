@@ -270,3 +270,25 @@ export function generateExpiryDate(): string {
   expiry.setMinutes(expiry.getMinutes() + PAYMENT_CONFIG.transaction.expiryMinutes);
   return expiry.toISOString();
 }
+
+/**
+ * Generate an official PayPal.Me URL with optional amount and currency.
+ * Fallback to base URL if amount is missing or invalid.
+ */
+export function generatePayPalUrl(amount?: number | null, currency: string = 'USD'): string {
+  const base = 'https://paypal.me/SYEDHAMZA1238';
+  if (amount && amount > 0 && isFinite(amount)) {
+    const formattedAmount = amount % 1 !== 0 ? amount.toFixed(2) : amount.toString();
+    const cleanCurrency = (currency || 'USD').toUpperCase();
+    return `${base}/${formattedAmount}${cleanCurrency}`;
+  }
+  return base;
+}
+
+/**
+ * Truncate a long blockchain address for mobile display.
+ */
+export function truncateAddress(address: string, frontChars: number = 8, backChars: number = 8): string {
+  if (!address || address.length <= frontChars + backChars) return address;
+  return `${address.substring(0, frontChars)}…${address.substring(address.length - backChars)}`;
+}

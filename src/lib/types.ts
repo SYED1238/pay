@@ -12,6 +12,8 @@ export enum PaymentStatus {
   PAYMENT_EXPIRED = 'PAYMENT_EXPIRED',
 }
 
+export type PaymentRail = 'upi' | 'paypal' | 'usdt';
+
 export type UPIApp = 'googlepay' | 'phonepe' | 'paytm' | 'bhim' | 'generic';
 
 export type DevicePlatform = 'android' | 'ios' | 'desktop';
@@ -23,6 +25,41 @@ export interface DeviceInfo {
   isIOS: boolean;
   isDesktop: boolean;
   isInApp: boolean;
+}
+
+export type PayPalCurrency = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD';
+
+export interface PayPalCurrencyOption {
+  code: PayPalCurrency;
+  symbol: string;
+  name: string;
+}
+
+export interface PayPalConfig {
+  username: string;
+  meUrl: string;
+  defaultCurrency: PayPalCurrency;
+  supportedCurrencies: PayPalCurrencyOption[];
+}
+
+export interface USDTConfig {
+  network: string;
+  networkCode: string;
+  networkFullName: string;
+  address: string;
+  currency: string;
+}
+
+// Extensible blockchain transaction interface for future on-chain verification
+export interface BlockchainTransaction {
+  txHash?: string;
+  amount?: number;
+  senderAddress?: string;
+  network: string;
+  blockNumber?: number;
+  confirmations?: number;
+  timestamp?: string;
+  status: 'unconfirmed' | 'confirming' | 'confirmed';
 }
 
 export interface UPIAppConfig {

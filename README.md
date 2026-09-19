@@ -1,23 +1,31 @@
-# Pay Syed Hamza — Secure UPI Payment Experience
+# Pay Syed Hamza — Unified Payment Terminal
 
-A luxury fintech UPI payment experience built with Next.js 16, React 19, TypeScript, Tailwind CSS, and Framer Motion for [pay.syedhamza.in](https://pay.syedhamza.in).
+A luxury fintech payment terminal built with Next.js 16, React 19, TypeScript, Tailwind CSS, and Framer Motion for [pay.syedhamza.in](https://pay.syedhamza.in).
 
-## Features
+Supports three dedicated payment rails unified under a single, quiet-luxury terminal interface:
 
-- **Device-Aware Flow**:
-  - **Mobile (Android & iOS)**: UPI App-First flow. Launches native UPI intents with direct app selection for Google Pay, PhonePe, Paytm, BHIM, and other UPI apps, with dynamic QR code fallback.
-  - **Desktop**: QR-First flow. Displays a high-contrast dynamic QR code immediately for instant scanning with any UPI app.
-- **Dynamic Amount Encoding**: Real-time generation of NPCI compliant UPI URIs and dynamic QR codes with transaction references.
-- **Truthful Payment States**: Transparent status tracking with active status verification and no false payment confirmation claims.
-- **Fintech Luxury Aesthetics**: Cinematic dark mode with champagne gold accents, glassmorphic surfaces, and micro-interactions.
+1. 🇮🇳 **Domestic UPI (India)**
+   - Destination: `syedhamza1238-4@okaxis`
+   - Mobile: UPI App-First flow with native app launch (Google Pay, PhonePe, Paytm, BHIM, Generic) + QR fallback
+   - Desktop: Instant dynamic QR generation + 1-click UPI ID copy
+
+2. 🌎 **International PayPal (Global)**
+   - Official PayPal.Me: [paypal.me/SYEDHAMZA1238](https://paypal.me/SYEDHAMZA1238)
+   - Multi-currency support: USD, EUR, GBP, CAD, AUD
+   - Dynamic amount calculation and verified external transfer
+
+3. ₮ **Cryptocurrency USDT (TRON / TRC20)**
+   - Receiving Address: `TPYbZrgRbj3tzCW4evgbn7SrMiJ8ctsH5p`
+   - Network: **TRON (TRC20)** with prominent warning banners
+   - High-contrast QR code tile, target amount calculator, and 1-click address copy
 
 ## Tech Stack
 
 - **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS (Mid-Range Slate Graphite & Minimal Titanium Ecru Palette)
 - **Animations**: Framer Motion
-- **QR Code**: qrcode
+- **QR Engine**: qrcode
 
 ## Getting Started
 
